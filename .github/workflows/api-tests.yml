@@ -1,0 +1,57 @@
+name: API Tests
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 准备 Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: 安装依赖
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: 冒烟测试（先跑，快速失败）
+        run: pytest -m smoke --no-header -q
+
+      - name: 全量测试并生成 HTML 报告
+        run: |
+          mkdir -p reports
+          pytest --html=reports/report.html --self-contained-html
+
+      - name: 上传测试报告
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-report-py${{ matrix.python-version }}
+          path: reports/
+          retention-days: 14
+
+      # 变异验证只跑一次：把 5 条缺陷修复逐个回退，确认回归用例真的会变红。
+      # 这一步回答的是"你的用例到底有没有用"，而不是"你的用例有没有跑过"。
+      - name: 变异验证（回归用例是否真的能抓住缺陷）
+        if: matrix.python-version == '3.13'
+        run: python tools/verify_regression.py

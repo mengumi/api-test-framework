@@ -1,0 +1,47 @@
+# 借书接口的数据驱动用例表（等价类划分 + 边界值分析）
+#
+# 字段说明：
+#   case_id          用例编号，同时作为 pytest 的用例 ID 出现在报告里
+#   title            用例标题（中文，便于产品和开发一起评审）
+#   book_stock       被测图书的初始库存
+#   book_exists      图书是否存在；false 时用不存在的 id，用于构造 404 场景
+#   reader_exists    读者是否存在；false 时用不存在的 id，用于构造 404 场景
+#   expected_status  期望的 HTTP 状态码
+#
+# 维护约定：新增场景只改这个文件，不动测试代码。
+
+borrow_cases:
+  - case_id: BORROW-NORMAL-001
+    title: 正常借书（库存充足）
+    book_stock: 3
+    book_exists: true
+    reader_exists: true
+    expected_status: 201
+
+  - case_id: BORROW-BOUNDARY-002
+    title: 库存恰好为 1（下边界内）可以借出
+    book_stock: 1
+    book_exists: true
+    reader_exists: true
+    expected_status: 201
+
+  - case_id: BORROW-BOUNDARY-003
+    title: 库存为 0（下边界外）不可借出
+    book_stock: 0
+    book_exists: true
+    reader_exists: true
+    expected_status: 409
+
+  - case_id: BORROW-EXCEPTION-004
+    title: 借一本不存在的图书
+    book_stock: 1
+    book_exists: false
+    reader_exists: true
+    expected_status: 404
+
+  - case_id: BORROW-EXCEPTION-005
+    title: 不存在的读者来借书
+    book_stock: 1
+    book_exists: true
+    reader_exists: false
+    expected_status: 404
